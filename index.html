@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>my music phases</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#f5f1ea;--ink:#2f2e33;--soft:#77746f;--line:rgba(47,46,51,.18);--tape:rgba(216,194,138,.55)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:300 21px/1.5 'Cormorant Garamond',Georgia,serif;
+ background-image:linear-gradient(rgba(255,255,255,.35),rgba(255,255,255,0))}
+h1,h2,h3{font-family:'Cormorant Garamond',Georgia,serif;margin:0;font-weight:400}
+header{max-width:1000px;margin:0 auto;padding:88px 32px 32px}
+h1{font-size:clamp(52px,9vw,96px);line-height:.95;font-style:italic;font-weight:300;letter-spacing:-.01em}
+header p{max-width:40ch;margin:18px 0 30px;color:var(--soft);font-size:22px}
+button{font:italic 400 19px 'Cormorant Garamond',serif;color:var(--ink);background:transparent;border:1px solid var(--ink);border-radius:999px;
+ padding:7px 24px;margin:0 10px 10px 0;cursor:pointer;transition:background .2s,color .2s}
+button:hover,button:focus-visible{background:var(--ink);color:var(--paper);outline:none}
+button.alt{border-color:var(--line);color:var(--soft)}
+button.alt:hover,button.alt:focus-visible{border-color:var(--ink);color:var(--paper)}
+#status{min-height:1.5em;font:500 19px 'Caveat',cursive;color:var(--soft)}
+main{max-width:1000px;margin:0 auto;padding:0 32px 120px}
+section.year{display:grid;grid-template-columns:170px 1fr;column-gap:40px;margin-top:72px;padding-top:36px;border-top:1px solid var(--line)}
+section.year>*:not(.yh){grid-column:2}
+.yh{grid-column:1;grid-row:1/span 4;align-self:start;position:sticky;top:28px}
+.yh h2{font-size:78px;line-height:1;font-weight:300;font-style:italic}
+.yh span{display:block;margin-top:6px;font:500 19px 'Caveat',cursive;color:var(--soft)}
+.polas{display:flex;flex-wrap:wrap;gap:26px;margin:4px 0 34px}
+.pola{position:relative;width:132px;background:#fffefb;padding:7px 7px 30px;box-shadow:0 1px 1px rgba(47,46,51,.12),0 12px 20px -14px rgba(47,46,51,.45)}
+.pola:nth-child(odd){transform:rotate(-1.6deg)}.pola:nth-child(even){transform:rotate(1.2deg)}.pola:nth-child(3n){transform:rotate(-.5deg)}
+.pola::before{content:"";position:absolute;top:-9px;left:50%;width:46px;height:16px;margin-left:-23px;background:var(--tape);transform:rotate(-2deg)}
+.pola i{display:block;aspect-ratio:1;background-size:cover;background-position:center}
+.pola b{position:absolute;left:8px;right:8px;bottom:5px;font:500 17px 'Caveat',cursive;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;color:var(--soft)}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:48px}
+.card h3{font-size:26px;font-style:italic;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.bar{display:flex;align-items:center;gap:12px;margin:9px 0;font-size:19px}
+.bar em{flex:0 0 40%;font-style:normal;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar u{display:block;height:3px;border-radius:3px;text-decoration:none;position:relative}
+.bar u::after{content:"";position:absolute;right:-3px;top:-2px;width:7px;height:7px;border-radius:50%;background:inherit}
+.bar small{color:var(--soft);font-size:16px}
+.notes{margin-top:28px;display:flex;flex-wrap:wrap;gap:14px}
+.note{padding:10px 16px 11px;font:500 22px/1.15 'Caveat',cursive;background:#e4ddc6;box-shadow:0 10px 16px -12px rgba(47,46,51,.5)}
+.note:nth-child(even){background:#e6d3d0;transform:rotate(1deg)}.note:nth-child(odd){transform:rotate(-1deg)}
+.note:nth-child(3n){background:#d6e0d3}
+.empty{color:var(--soft);font-style:italic}
+p.empty{max-width:60ch}
+#strip{display:flex;gap:10px 22px;flex-wrap:wrap;margin-top:34px}
+.chip{font-size:19px;color:var(--soft);font-style:italic}
+.chip b{font:500 22px 'Caveat',cursive;font-style:normal;color:var(--ink);margin-right:6px}
+.months{margin-top:40px}
+.mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:18px 28px}
+.m{border-top:1px solid var(--line);padding-top:6px}
+.m small{display:block;font:500 17px 'Caveat',cursive;color:var(--soft)}
+.m span{display:block;font-style:italic;font-size:21px;line-height:1.2}
+.m.none span{color:var(--line)}
+@media(max-width:760px){section.year{grid-template-columns:1fr}section.year>*:not(.yh),.yh{grid-column:1}.yh{position:static;grid-row:auto;margin-bottom:14px}.cols{grid-template-columns:1fr;gap:28px}}
+@media(prefers-reduced-motion:reduce){button{transition:none}}
+</style>
+</head>
+<body>
+<header>
+  <h1>my music<br>phases</h1>
+  <p>Every song you saved, gathered into the eras of your life.</p>
+  <button id="login">connect spotify</button>
+  <div id="status"></div>
+  <div id="strip"></div>
+</header>
+<main id="out"></main>
+
+<script>
+// ---- config ----
+const CLIENT_ID = 'd13df075a26a4103a5994a161e96c626';
+const REDIRECT = location.origin + location.pathname.replace(/index\.html$/,'');   // add this exact URL in the Spotify dashboard
+const SCOPES = 'user-library-read';
+const $ = s => document.querySelector(s);
+const status = t => $('#status').textContent = t;
+const PALETTE = ['#a9b8a3','#d9b8b4','#d8c28a','#9fb3c2','#b8aac6','#d4b394'];
+
+// ---- spotify login (PKCE, no server, nothing stored) ----
+const b64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+async function login(){
+  const verifier = b64(crypto.getRandomValues(new Uint8Array(48)));
+  sessionStorage.setItem('v', verifier);
+  const challenge = b64(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier)));
+  location = 'https://accounts.spotify.com/authorize?' + new URLSearchParams({
+    client_id:CLIENT_ID, response_type:'code', redirect_uri:REDIRECT, scope:SCOPES,
+    code_challenge_method:'S256', code_challenge:challenge});
+}
+async function exchange(code){
+  const r = await fetch('https://accounts.spotify.com/api/token',{method:'POST',
+    headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body:new URLSearchParams({client_id:CLIENT_ID,grant_type:'authorization_code',code,
+      redirect_uri:REDIRECT,code_verifier:sessionStorage.getItem('v')})});
+  if(!r.ok) throw new Error('Spotify login failed. Check the redirect URI in your dashboard.');
+  return (await r.json()).access_token;
+}
+let token;
+async function api(path){
+  for(let i=0;i<4;i++){
+    const r = await fetch(path.startsWith('http')?path:'https://api.spotify.com/v1'+path,{headers:{Authorization:'Bearer '+token}});
+    if(r.status===429){await new Promise(s=>setTimeout(s,(+r.headers.get('Retry-After')||2)*1000));continue}
+    if(!r.ok) throw new Error('Spotify said '+r.status+' for '+path.split('?')[0]);
+    return r.json();
+  }
+  throw new Error('Spotify is rate limiting us. Try again in a minute.');
+}
+
+// ---- load real data ----
+async function loadReal(){
+  const tracks=[]; let url='/me/tracks?limit=50';
+  while(url){
+    const d = await api(url);
+    d.items.forEach(it=>{const t=it.track; if(!t) return;
+      tracks.push({added:new Date(it.added_at),name:t.name,artist:t.artists[0].name,aid:t.artists[0].id,
+        img:t.album.images.slice(-2)[0]?.url});});
+    status(`reading your liked songs… ${tracks.length}`);
+    url = d.next;
+  }
+  const genres={}; let genresOk=true;
+  const ids=[...new Set(tracks.map(t=>t.aid))];
+  try{
+    for(let i=0;i<ids.length;i+=50){
+      status(`looking up genres… ${Math.min(i+50,ids.length)}/${ids.length}`);
+      (await api('/artists?ids='+ids.slice(i,i+50).join(','))).artists.forEach(a=>{if(a) genres[a.id]=a.genres||[]});
+    }
+  }catch(e){genresOk=false; console.warn('Genres unavailable',e)}
+  if(genresOk && !Object.values(genres).some(g=>g.length)) genresOk=false;
+  return {tracks,genres,genresOk};
+}
+
+// ---- demo data ----
+function demo(){
+  const A=[['Phoebe Bridgers','indie folk',2018,2022],['Tame Impala','psychedelic rock',2016,2019],['Mitski','indie rock',2018,2021],
+   ['Frank Ocean','r&b',2016,2017],['SZA','r&b',2018,2023],['Taylor Swift','pop',2019,2024],['Fleetwood Mac','classic rock',2020,2021],
+   ['Japanese Breakfast','indie pop',2021,2024],['Beach House','dream pop',2016,2018],['Olivia Rodrigo','pop',2021,2022],
+   ['Bon Iver','indie folk',2017,2020],['Clairo','bedroom pop',2019,2022],['Men I Trust','dream pop',2022,2025],['Laufey','jazz pop',2023,2025]];
+  let s=7; const rnd=()=>(s=(s*16807)%2147483647)/2147483647;
+  const tracks=[],genres={};
+  A.forEach(([n,g,y0,y1],i)=>{genres[n]=[g];
+    for(let k=0;k<3;k++){ // bursts of saves = phases
+      const c=new Date(y0+rnd()*(y1-y0),Math.floor(rnd()*12),Math.floor(rnd()*28)+1), burst=3+Math.floor(rnd()*6);
+      for(let j=0;j<burst;j++) tracks.push({added:new Date(c.getTime()+rnd()*40*864e5),name:n+' song '+(j+1),artist:n,aid:n,img:null});}});
+  return {tracks,genres,genresOk:true};
+}
+
+// ---- analysis ----
+const tally=(arr,f)=>{const m={};arr.forEach(x=>{const k=f(x);if(k)(Array.isArray(k)?k:[k]).forEach(v=>m[v]=(m[v]||0)+1)});return Object.entries(m).sort((a,b)=>b[1]-a[1])};
+const dayKey=d=>d.toISOString().slice(0,10);
+const month=d=>d.toLocaleString('en',{month:'short'});
+
+// ---- render ----
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function cover(t,i){
+  const bg=t.img?`url(${t.img})`:PALETTE[(t.artist.length+i)%6];
+  return `<div class="pola"><i style="background:${bg};background-size:cover"></i><b>${esc(t.artist)}</b></div>`;
+}
+function render({tracks,genres,genresOk,loading}){
+  const GENERIC=new Set(['pop','rock','electronic','dance','hip hop','hip-hop','alternative','indie','music']);
+  const gOf=t=>{const g=genres[t.aid]||[], f=g.filter(x=>!GENERIC.has(x.toLowerCase()));return f.length?f:g};
+  const years=[...new Set(tracks.map(t=>t.added.getFullYear()))].sort();
+  const perDay={}; tracks.forEach(t=>{const k=dayKey(t.added);perDay[k]=(perDay[k]||0)+1});
+  const bulk=Object.entries(perDay).filter(([,n])=>n>=25);
+  const bulkSet=new Set(bulk.map(b=>b[0]));
+  const reg=tracks.filter(t=>!bulkSet.has(dayKey(t.added))); let strip='', html='';
+  if(!genresOk) html+=`<p class="empty">${loading?'Looking up genres, one artist at a time. They will appear here shortly.':'No genre data was available, so the genre charts are skipped.'}</p>`;
+  years.forEach(y=>{
+    const ts=tracks.filter(t=>t.added.getFullYear()===y);
+    const topA=tally(ts,t=>t.artist).slice(0,8), topG=genresOk?tally(ts,gOf).slice(0,8):[];
+    if(topG[0]) strip+=`<span class="chip"><b>${y}</b>${topG.slice(0,3).map(g=>esc(g[0])).join(', ')}</span>`;
+    const picks=topA.map(([a])=>ts.find(t=>t.artist===a));
+    const topIn=m=>{const r=tally(reg.filter(t=>t.added.getFullYear()===y&&t.added.getMonth()===m),t=>t.artist)[0];return r&&r[0]};
+        const maxG=topG[0]?.[1]||1, maxA=topA[0][1];
+    const bars=(rows,max,off)=>rows.map(([n,c],i)=>`<div class="bar"><em>${esc(n)}</em><u style="width:${Math.max(6,c/max*52)}%;background:${PALETTE[(i+off)%6]}"></u><small>${c}</small></div>`).join('');
+    html+=`<section class="year"><div class="yh"><h2>${y}</h2><span>${ts.length} songs saved</span></div>
+      <div class="polas">${picks.map(cover).join('')}</div>
+      <div class="cols">
+        <div class="card"><h3>on repeat</h3>${bars(topA,maxA,0)}</div>
+        <div class="card"><h3>genres</h3>${topG.length?bars(topG,maxG,2):'<span class="empty">no genre data</span>'}</div>
+      </div>
+      <div class="card months"><h3>month by month</h3><div class="mgrid">${[...Array(12).keys()].map(m=>{const a=topIn(m);return `<div class="m${a?'':' none'}"><small>${month(new Date(y,m,1))}</small><span>${a?esc(a):'–'}</span></div>`}).join('')}</div></div>
+    </section>`;
+  });
+  $('#strip').innerHTML=strip; $('#out').innerHTML=html||'<p class="empty">No liked songs found yet. Like a few songs and come back!</p>';
+  status(`${tracks.length} songs, ${years[0]} to ${years.at(-1)}`);
+}
+
+// ---- genre fallback: MusicBrainz tags for each year's top artists (cached in this browser) ----
+async function enrich(data){
+  let cache={}; try{cache=JSON.parse(localStorage.getItem('mbg')||'{}')}catch(e){}
+  const seen={};
+  [...new Set(data.tracks.map(t=>t.added.getFullYear()))].forEach(y=>{
+    const ts=data.tracks.filter(t=>t.added.getFullYear()===y);
+    tally(ts,t=>t.artist).slice(0,8).forEach(([a])=>{seen[ts.find(x=>x.artist===a).aid]=a});});
+  const list=Object.entries(seen), SKIP=new Set(['seen live','american','british','english','female vocalists','male vocalists','usa','uk','canadian','australian']);
+  let done=0,found=0; data.loading=true;
+  for(const [aid,name] of list){
+    if(!(name in cache)){
+      try{
+        const r=await fetch('https://musicbrainz.org/ws/2/artist/?fmt=json&limit=1&query='+encodeURIComponent('artist:"'+name+'"'));
+        const a=(await r.json()).artists?.[0];
+        cache[name]=a&&a.score>=90?(a.tags||[]).sort((x,y)=>y.count-x.count).map(t=>t.name).filter(n=>!SKIP.has(n)).slice(0,3):[];
+        try{localStorage.setItem('mbg',JSON.stringify(cache))}catch(e){}
+      }catch(e){console.warn('MusicBrainz lookup failed for',name,e)}
+      await new Promise(r=>setTimeout(r,1100));
+    }
+    if(cache[name]?.length){data.genres[aid]=cache[name];found++}
+    done++;
+    if(done%12===0){data.genresOk=found>0;render(data)}
+    status(`finding genres… ${done}/${list.length}`);
+  }
+  data.loading=false; data.genresOk=found>0; render(data);
+}
+
+// ---- boot ----
+$('#login').onclick=login;
+(async()=>{
+  const code=new URLSearchParams(location.search).get('code');
+  if(!code) return;
+  history.replaceState({},'',location.pathname);
+  try{ status('logging in…'); token=await exchange(code); const data=await loadReal(); render(data); if(!data.genresOk) await enrich(data); }
+  catch(e){ status(e.message); }
+})();
+</script>
+</body>
+</html>
