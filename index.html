@@ -62,6 +62,15 @@ nav{margin:8px 0 10px}.chips{margin-bottom:6px}
 .tab:hover,.tab:focus-visible{background:none;color:var(--ink);transform:none}
 .tab.on{color:var(--ink);border-bottom-color:var(--ink)}
 .sea .yh h2{font-size:54px;text-transform:capitalize}
+.pls{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:34px 40px;padding-top:6px}
+.pl{display:flex;gap:20px;align-items:center}
+.pl .pola{flex:0 0 112px;width:112px}
+.pl h3{font-size:27px;font-style:italic;line-height:1.1;margin-bottom:2px}
+.pl .when{font:500 18px 'Caveat',cursive;color:var(--soft)}
+.pl p{margin:4px 0 0;font-size:18px;color:var(--soft)}
+#strip:empty{display:none}
+.chips{margin-top:4px}
+.chips+section.year{margin-top:36px}
 @media(max-width:760px){section.year{grid-template-columns:1fr}section.year>*:not(.yh),.yh{grid-column:1}.yh{position:static;grid-row:auto;margin-bottom:14px}.cols{grid-template-columns:1fr;gap:28px}}
 @media(prefers-reduced-motion:reduce){button{transition:none}}
 </style>
@@ -71,7 +80,7 @@ nav{margin:8px 0 10px}.chips{margin-bottom:6px}
   <h1>my music<br>phases</h1>
   <p>Every song you saved, gathered into the eras of your life.</p>
   <button id="login">connect spotify</button>
-  <nav id="nav" hidden><button class="tab on" data-v="years">years</button><button class="tab" data-v="seasons">seasons</button></nav>
+  <nav id="nav" hidden><button class="tab on" data-v="years">years</button><button class="tab" data-v="seasons">seasons</button><button class="tab" data-v="playlists">playlists</button></nav>
   <div id="status"></div>
   <div id="strip"></div>
 </header>
@@ -81,7 +90,7 @@ nav{margin:8px 0 10px}.chips{margin-bottom:6px}
 // ---- config ----
 const CLIENT_ID = 'd13df075a26a4103a5994a161e96c626';
 const REDIRECT = location.origin + location.pathname.replace(/index\.html$/,'');   // add this exact URL in the Spotify dashboard
-const SCOPES = 'user-library-read';
+const SCOPES = 'user-library-read playlist-read-private playlist-read-collaborative';
 const $ = s => document.querySelector(s);
 const status = t => $('#status').textContent = t;
 const PALETTE = ['#a9b8a3','#d9b8b4','#d8c28a','#9fb3c2','#b8aac6','#d4b394'];
@@ -105,37 +114,50 @@ async function exchange(code){
   return (await r.json()).access_token;
 }
 let token;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+let lastCall=0;
 async function api(path){
-  for(let i=0;i<4;i++){
+  for(let i=0;i<6;i++){
+    const gap=Date.now()-lastCall; if(gap<150) await sleep(150-gap);   // pace requests so we stay under Spotify's limit
+    lastCall=Date.now();
     const r = await fetch(path.startsWith('http')?path:'https://api.spotify.com/v1'+path,{headers:{Authorization:'Bearer '+token}});
-    if(r.status===429){await new Promise(s=>setTimeout(s,(+r.headers.get('Retry-After')||2)*1000));continue}
+    if(r.status===429){
+      const body=await r.text().catch(()=>'');
+      if(body.includes('QUOTA_EXCEEDED')){
+        const e=new Error("Spotify says this app's usage quota is used up. It can take many hours to reset, often until the next day, and retrying makes it worse. Nothing is wrong with your setup, so please try again later.");
+        e.quota=true; throw e;
+      }
+      const wait=+r.headers.get('Retry-After')||5*(i+1);
+      if(wait>90) throw new Error(`Spotify is asking us to wait about ${Math.ceil(wait/60)} minutes. Try again then.`);
+      status(`Spotify asked us to slow down, waiting ${wait} seconds…`);
+      await sleep((wait+1)*1000); continue;
+    }
     if(!r.ok) throw new Error('Spotify said '+r.status+' for '+path.split('?')[0]);
     return r.json();
   }
-  throw new Error('Spotify is rate limiting us. Try again in a minute.');
+  throw new Error('Spotify is still rate limiting us. Wait a few minutes, then connect again.');
 }
 
 // ---- load real data ----
+const store={get(k){try{return JSON.parse(localStorage.getItem(k)||'null')}catch(e){return null}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 async function loadReal(){
-  const tracks=[]; let url='/me/tracks?limit=50';
-  while(url){
-    const d = await api(url);
-    d.items.forEach(it=>{const t=it.track; if(!t) return;
-      tracks.push({added:new Date(it.added_at),name:t.name,artist:t.artists[0].name,aid:t.artists[0].id,
-        img:t.album.images.slice(-2)[0]?.url});});
-    status(`reading your liked songs… ${tracks.length}`);
-    url = d.next;
-  }
-  const genres={}; let genresOk=true;
-  const ids=[...new Set(tracks.map(t=>t.aid))];
-  try{
-    for(let i=0;i<ids.length;i+=50){
-      status(`looking up genres… ${Math.min(i+50,ids.length)}/${ids.length}`);
-      (await api('/artists?ids='+ids.slice(i,i+50).join(','))).artists.forEach(a=>{if(a) genres[a.id]=a.genres||[]});
+  const cached=(store.get('lk')||[]).map(t=>({...t,added:new Date(t.added)}));
+  const known=new Set(cached.map(t=>t.added.getTime()+'|'+t.name));
+  const fresh=[]; let url='/me/tracks?limit=50', caughtUp=false;
+  while(url&&!caughtUp){                     // newest first, so stop at the first song we already have
+    const d=await api(url);
+    for(const it of d.items){
+      const t=it.track; if(!t) continue;
+      const row={added:new Date(it.added_at),name:t.name,artist:t.artists[0].name,aid:t.artists[0].id,img:t.album.images.slice(-2)[0]?.url};
+      if(known.has(row.added.getTime()+'|'+row.name)){caughtUp=true;break}
+      fresh.push(row);
     }
-  }catch(e){genresOk=false; console.warn('Genres unavailable',e)}
-  if(genresOk && !Object.values(genres).some(g=>g.length)) genresOk=false;
-  return {tracks,genres,genresOk};
+    status(`reading your liked songs… ${fresh.length+cached.length}`);
+    url=d.next;
+  }
+  const tracks=[...fresh,...cached];
+  store.set('lk',tracks);                    // only saved after a complete load
+  return {tracks,genres:{},genresOk:false};  // genres come from MusicBrainz (Spotify no longer returns them)
 }
 
 // ---- analysis ----
@@ -168,7 +190,7 @@ function renderYears({tracks,genres,genresOk,loading}){
     html+=`<section class="year"><div class="yh"><h2>${y}</h2><span>${ts.length} songs saved</span></div>
       <div class="polas">${picks.map(cover).join('')}</div>
       <div class="cols">
-        <div class="card"><h3>on repeat</h3>${bars(topA,maxA,0)}</div>
+        <div class="card"><h3>most saved</h3>${bars(topA,maxA,0)}</div>
         <div class="card"><h3>genres</h3>${topG.length?bars(topG,maxG,2):'<span class="empty">no genre data</span>'}</div>
       </div>
       <div class="card months"><h3>month by month</h3><div class="mgrid">${[...Array(12).keys()].map(m=>{const a=topIn(m);return `<div class="m${a?'':' none'}"><small>${month(new Date(y,m,1))}</small><span>${a?esc(a):'–'}</span></div>`}).join('')}</div></div>
@@ -181,7 +203,33 @@ function renderYears({tracks,genres,genresOk,loading}){
 // ---- seasons page ----
 const SEAS=['winter','spring','summer','fall'];
 const GENERIC=new Set(['pop','rock','electronic','dance','hip hop','hip-hop','alternative','indie','music']);
-const mkGOf=genres=>t=>{const g=genres[t.aid]||[], f=g.filter(x=>!GENERIC.has(x.toLowerCase()));return f.length?f:g};
+const JUNK=new Set(['girl group','boy group','idol','idols','male vocalists','female vocalists','seen live','singer','vocalist','group','duo','band','solo','music','pop music','00s','10s','20s','90s','80s','21st century','singer songwriter','blue eyed soul','songwriter','composer','producer','rapper','dj','musician','tiktok','viral','vocal','vocals']);
+const PLACE=/^(american|british|english|canadian|australian|swedish|irish|scottish|welsh|german|french|japanese|chinese|taiwanese|thai|spanish|latin|mexican|brazilian|colombian|puerto rican|norwegian|danish|dutch|italian|usa|us|uk|united states|united kingdom|america|england|canada|australia|los angeles|new york|london|california|texas|nashville|atlanta|toronto|seoul)$/;
+const ALIAS={synthpop:'synth pop','electro pop':'electropop',dancepop:'dance pop',hiphop:'hip hop',rap:'hip hop',rnb:'r&b','rhythm and blues':'r&b','alt rock':'alternative rock','indie folk pop':'indie folk'};
+// user-typed junk: emails, links, decades, years, and sentences
+const bad=t=>t.includes('@')||/https?:|www\.|\.(com|net|org)\b/.test(t)||/^\d{2,4}s?$/.test(t)||t.split(' ').length>3||/\b(i am|i m|fan|favou?rite|love[sd]?|awesome|best|beautiful|sexy|cute)\b/.test(t);
+let GENRESET=null;                       // MusicBrainz's official genre list, downloaded once and saved in this browser
+const norm=t=>t.toLowerCase().replace(/[-_]/g,' ').replace(/\s+/g,' ').trim();
+async function loadGenreList(){
+  let list=store.get('mbgenres');
+  if(!list){ try{ const r=await fetch('https://musicbrainz.org/ws/2/genre/all?fmt=txt'); if(r.ok){list=(await r.text()).split('\n').filter(Boolean); store.set('mbgenres',list)} }catch(e){console.warn('genre list unavailable',e)} }
+  if(list) GENRESET=new Set(list.map(norm));
+}
+const CANON=new Set(['k-pop','hip hop','r&b']);
+function canon(tags){
+  const n=tags.map(norm).filter(Boolean);
+  if(n.some(t=>/\bk ?pop\b|\bkorea|\bkorean\b/.test(t)||/^\d+(st|nd|rd|th) gen/.test(t))) return ['k-pop'];   // every k-pop variant becomes one genre
+  const mapped=n.map(t=>/hip hop/.test(t)?'hip hop':/r&b/.test(t)?'r&b':ALIAS[t]||t);
+  return [...new Set(mapped.filter(t=>!JUNK.has(t)&&!PLACE.test(t)&&!bad(t)&&(CANON.has(t)||!GENRESET||GENRESET.has(t))))];   // keep only official genres
+}
+// each song counts once, under its artist's top-voted genre. If that is a broad one like "pop",
+// use the most specific tag in the same family ("country pop", "indie pop") instead of jumping to an unrelated genre.
+const mkGOf=genres=>{const memo={};return t=>memo[t.aid]??=(()=>{
+  const g=canon(genres[t.aid]||[]); if(!g.length) return [];
+  const p=g[0]; if(!GENERIC.has(p)) return [p];
+  const fam=p.split(' ')[0];
+  return [g.find(x=>x!==p&&x.split(' ').includes(fam))||p];
+})()};
 const seasonOf=d=>{const m=d.getMonth();return {s:m===11||m<2?0:m<5?1:m<8?2:3, y:m===11?d.getFullYear()+1:d.getFullYear()}}; // Dec belongs to the following winter
 let DATA, VIEW='years', SEASON=-1;
 function renderSeasons({tracks,genres,genresOk}){
@@ -192,35 +240,96 @@ function renderSeasons({tracks,genres,genresOk}){
   const bars=(rows,max,off)=>rows.map(([n,c],i)=>`<div class="bar"><em>${esc(n)}</em><u style="width:${Math.max(6,c/max*52)}%;background:${PALETTE[(i+off)%6]}"></u><small>${c}</small></div>`).join('');
   const chips=['all',...SEAS].map((n,i)=>`<button class="tab${SEASON===i-1?' on':''}" data-s="${i-1}">${n}</button>`).join('');
   const body=list.map(g=>{
-    const topA=tally(g.ts,t=>t.artist).slice(0,5), topG=genresOk?tally(g.ts,gOf).slice(0,5):[];
+    const topA=tally(g.ts,t=>t.artist).slice(0,8), topG=genresOk?tally(g.ts,gOf).slice(0,8):[];
     const picks=topA.map(([a])=>g.ts.find(t=>t.artist===a));
     const label=g.s===0?`${g.y-1}–${String(g.y).slice(2)}`:g.y;
     return `<section class="year sea"><div class="yh"><h2>${SEAS[g.s]}</h2><span>${label}, ${g.ts.length} songs</span></div>
       <div class="polas">${picks.map(cover).join('')}</div>
-      <div class="cols"><div class="card"><h3>on repeat</h3>${bars(topA,topA[0][1],0)}</div>
+      <div class="cols"><div class="card"><h3>most saved</h3>${bars(topA,topA[0][1],0)}</div>
       <div class="card"><h3>genres</h3>${topG.length?bars(topG,topG[0][1],2):'<span class="empty">no genre data yet</span>'}</div></div></section>`}).join('');
   $('#strip').innerHTML='';
   $('#out').innerHTML=`<div class="chips">${chips}</div>`+(body||'<p class="empty">No saved songs in that season yet.</p>');
   status(`${tracks.length} songs saved`);
 }
+// ---- playlists page (only playlists you created; Spotify-made ones aren't shared with apps) ----
+let PL=null, PLERR='', PLBUSY=false;
+async function loadPlaylists(){
+  PLBUSY=true; PLERR=''; PL=[];
+  const cache=store.get('plc')||{};
+  try{
+    const me=await api('/me'); let url='/me/playlists?limit=50';
+    while(url){
+      const d=await api(url);
+      d.items.filter(p=>p&&p.owner&&p.owner.id===me.id).forEach(p=>PL.push({id:p.id,name:p.name,img:p.images?.[0]?.url,snap:p.snapshot_id,n:(p.items||p.tracks)?.total??0}));
+      url=d.next;
+    }
+    for(let i=0;i<PL.length;i++){
+      const p=PL[i], c=cache[p.id]; status(`reading playlists… ${i+1}/${PL.length}`);
+      let ok=true;
+      if(c&&p.snap&&c.snap===p.snap){            // unchanged since last time: no Spotify requests needed
+        if(c.start){p.start=new Date(c.start);p.end=new Date(c.end);p.top=c.top}
+      }else{
+        const dates=[], artists=[];
+        try{
+          let u=`/playlists/${p.id}/items?limit=100`, pages=0;
+          while(u&&pages++<10){
+            const d=await api(u);
+            d.items.forEach(it=>{
+              const t=it.item||it.track, when=it.added_at&&new Date(it.added_at);
+              if(when&&when.getFullYear()>=2008) dates.push(when);   // very old items can carry a 1970 placeholder date
+              if(t&&t.artists&&t.artists[0]) artists.push(t.artists[0].name);
+            });
+            u=d.next;
+          }
+        }catch(e){ if(e.quota) throw e; ok=false; console.warn('skipped playlist',p.name,e) }
+        if(dates.length){dates.sort((a,b)=>a-b);p.start=dates[0];p.end=dates.at(-1);p.top=tally(artists,a=>a).slice(0,3).map(x=>x[0])}
+      }
+      p.done=true;
+      if(p.start) p.live=p.end>Date.now()-30*864e5;
+      if(ok){cache[p.id]={snap:p.snap,start:p.start,end:p.end,top:p.top}; store.set('plc',cache)}   // saved as we go
+    }
+    status(`${PL.filter(p=>p.start).length} playlists`);
+  }catch(e){ PLERR=(e.quota||/Spotify is (asking|still)/.test(e.message))?e.message:"Spotify wouldn't share your playlists. Reload the page and connect again, and approve the playlist permission."; PL=null; console.warn(e); status(''); }
+  PLBUSY=false; if(VIEW==='playlists') renderPlaylists();
+}
+function renderPlaylists(){
+  $('#strip').innerHTML='';
+  if(!PL||PLBUSY){ $('#out').innerHTML=`<p class="empty">${esc(PLERR||'Reading your playlists…')}</p>`; return; }
+  const ready=PL.filter(p=>p.start), by={};
+  const going=ready.filter(p=>p.live); ready.filter(p=>!p.live).forEach(p=>(by[p.start.getFullYear()]??=[]).push(p));
+  const fmt=d=>d.toLocaleString('en',{month:'short',year:'numeric'});
+  const row=p=>{const a=fmt(p.start),b=fmt(p.end);
+    return `<div class="pl"><div class="pola"><i style="background:${p.img?`url(${p.img})`:PALETTE[p.name.length%6]};background-size:cover"></i><b>${p.n} songs</b></div>
+    <div><h3>${esc(p.name)}</h3><span class="when">${p.live&&a!==b?`since ${a}, last added ${b}`:a}</span><p>${p.top.map(esc).join(', ')}</p></div></div>`};
+  const ongoing=going.length?`<section class="year sea"><div class="yh"><h2>ongoing</h2><span>${going.length} playlist${going.length>1?'s':''}</span></div>
+    <div class="pls">${going.sort((a,b)=>b.end-a.end).map(row).join('')}</div></section>`:'';
+  const html=ongoing+Object.keys(by).sort((a,b)=>b-a).map(y=>`<section class="year"><div class="yh"><h2>${y}</h2><span>${by[y].length} playlist${by[y].length>1?'s':''}</span></div>
+    <div class="pls">${by[y].sort((a,b)=>b.start-a.start).map(row).join('')}</div></section>`).join('');
+  $('#out').innerHTML=html||'<p class="empty">No playlists found.</p>';
+}
 function render(d){
   DATA=d; $('#login').hidden=true; $('#nav').hidden=false;
   document.querySelectorAll('#nav .tab').forEach(b=>b.classList.toggle('on',b.dataset.v===VIEW));
-  (VIEW==='years'?renderYears:renderSeasons)(d);
+  (VIEW==='years'?renderYears:VIEW==='seasons'?renderSeasons:renderPlaylists)(d);
 }
 document.addEventListener('click',e=>{
   const b=e.target.closest('[data-v],[data-s]'); if(!b||!DATA) return;
-  if(b.dataset.v){ VIEW=b.dataset.v; window.scrollTo(0,0); } else SEASON=+b.dataset.s;
+  if(b.dataset.v){ VIEW=b.dataset.v; window.scrollTo(0,0); if(VIEW==='playlists'&&!PL&&!PLBUSY) loadPlaylists(); } else SEASON=+b.dataset.s;
   render(DATA);
 });
 
 // ---- genre fallback: MusicBrainz tags for each year's top artists (cached in this browser) ----
 async function enrich(data){
-  let cache={}; try{cache=JSON.parse(localStorage.getItem('mbg')||'{}')}catch(e){}
+  let cache={}; try{cache=JSON.parse(localStorage.getItem('mbg2')||'{}')}catch(e){}
   const seen={};
   [...new Set(data.tracks.map(t=>t.added.getFullYear()))].forEach(y=>{
     const ts=data.tracks.filter(t=>t.added.getFullYear()===y);
     tally(ts,t=>t.artist).slice(0,8).forEach(([a])=>{seen[ts.find(x=>x.artist===a).aid]=a});});
+  // also each season's top 8 artists, so the seasons page uses its own data (bulk-save days left out, same as that page)
+  const per={}, bySeason={};
+  data.tracks.forEach(t=>{const k=dayKey(t.added);per[k]=(per[k]||0)+1});
+  data.tracks.filter(t=>per[dayKey(t.added)]<25).forEach(t=>{const {s,y}=seasonOf(t.added);(bySeason[y*4+s]??=[]).push(t)});
+  Object.values(bySeason).forEach(ts=>tally(ts,t=>t.artist).slice(0,8).forEach(([a])=>{seen[ts.find(x=>x.artist===a).aid]=a}));
   const list=Object.entries(seen), SKIP=new Set(['seen live','american','british','english','female vocalists','male vocalists','usa','uk','canadian','australian']);
   let done=0,found=0; data.loading=true;
   for(const [aid,name] of list){
@@ -228,8 +337,8 @@ async function enrich(data){
       try{
         const r=await fetch('https://musicbrainz.org/ws/2/artist/?fmt=json&limit=1&query='+encodeURIComponent('artist:"'+name+'"'));
         const a=(await r.json()).artists?.[0];
-        cache[name]=a&&a.score>=90?(a.tags||[]).sort((x,y)=>y.count-x.count).map(t=>t.name).filter(n=>!SKIP.has(n)).slice(0,3):[];
-        try{localStorage.setItem('mbg',JSON.stringify(cache))}catch(e){}
+        cache[name]=a&&a.score>=90?(a.tags||[]).sort((x,y)=>y.count-x.count).map(t=>t.name).filter(n=>!SKIP.has(n)).slice(0,6):[];
+        try{localStorage.setItem('mbg2',JSON.stringify(cache))}catch(e){}
       }catch(e){console.warn('MusicBrainz lookup failed for',name,e)}
       await new Promise(r=>setTimeout(r,1100));
     }
@@ -247,7 +356,7 @@ $('#login').onclick=login;
   const code=new URLSearchParams(location.search).get('code');
   if(!code) return;
   history.replaceState({},'',location.pathname);
-  try{ status('logging in…'); token=await exchange(code); const data=await loadReal(); render(data); if(!data.genresOk) await enrich(data); }
+  try{ status('logging in…'); token=await exchange(code); const data=await loadReal(); await loadGenreList(); render(data); if(!data.genresOk) await enrich(data); }
   catch(e){ status(e.message); }
 })();
 </script>
